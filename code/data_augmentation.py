@@ -131,10 +131,15 @@ def temporal_mask(data):
 print('functions created')
 
 train_data = [] # shape is 3100 entries of [loaded file, accent]
+test_data = []
 
 for name, accent in zip(train_df['file_path'], train_df['accent']):
     scale, sr = librosa.load(name)
     train_data.append([scale, accent])
+
+for name in test_df['file_path']:
+    scale, sr = librosa.load(name)
+    test_data.append(scale)
 
 for i in range(3):
     
@@ -147,14 +152,27 @@ for i in range(3):
 for data in train_data:
     data[0] = np.pad(data[0], (0, max(0, 286003 - len(data[0]))), "constant")
 
+for data in test_data:
+    data = np.pad(data, (0, max(0, 286003 - len(data))), "constant")
+
 print('data augmented and padded, onto create spectrograms')
 
 spectro_accent = []
+spectro_accent_test = []
 
 for i in range(len(train_data)):
-    mel_spectrogram = librosa.feature.melspectrogram(y= train_data[i][0],sr= 16000, hop_length=5)
+    if i%20 == 0:
+        print(f'we\'re at iteration {i} of the training data') 
+    mel_spectrogram = librosa.feature.melspectrogram(y= train_data[i][0],sr= 16000, hop_length= 20)
     log_mel_spectrogram = librosa.power_to_db(mel_spectrogram)
     spectro_accent.append([log_mel_spectrogram, train_data[i][1]])
+
+for i in range(len(test_data)):
+    if i%20 == 0:
+        print(f'we\'re at iteration {i} of the test data') 
+    mel_spectrogram = librosa.feature.melspectrogram(y= test_data[i], sr= 16000, hop_length= 20)
+    log_mel_spectrogram = librosa.power_to_db(mel_spectrogram)
+    spectro_accent_test.append(log_mel_spectrogram)
 
 print('spectrograms created for training set, augmenting them now')
 
@@ -174,5 +192,8 @@ for data in spectro_accent:
 
 print('done augmenting spectrogram, saving file.')
 
-with open('spectro_data', 'wb') as handle:
+with open('spectro_data_train', 'wb') as handle:
     pk.dump(spectro_accent, handle)
+
+with open('spectro_data_test', 'wb') as handle:
+    pk.dump(spectro_accent_test, handle)
